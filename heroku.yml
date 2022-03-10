@@ -1,0 +1,8 @@
+build:
+  docker:
+    worker: Dockerfile
+run:
+  worker:
+    command:
+      - python3 worker/worker.py $USERNAME $PASSWORD --concurrency $CONCURRENCY
+    image: worker
