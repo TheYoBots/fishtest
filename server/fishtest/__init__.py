@@ -1,6 +1,5 @@
+import base64
 import hashlib
-import os
-import subprocess
 from pathlib import Path
 
 from fishtest.rundb import RunDb
@@ -24,33 +23,20 @@ def main(global_config, **settings):
     config.include("pyramid_mako")
     config.set_default_csrf_options(require_csrf=False)
 
-    def static_file_full_path(static_file_path):
-        return Path(__file__).parent / "./static/{}".format(static_file_path)
+    def static_full_path(static_path):
+        return Path(__file__).parent / f"static/{static_path}"
 
-    def static_file_hash(static_file_path):
-        with open(static_file_full_path(static_file_path), "r") as f:
-            return hashlib.md5(f.read().encode("utf-8")).hexdigest()
-
-    # the same hash calculated by browser for sub-resource integrity checks:
-    # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
-    dark_theme_sha256_integrity = (
-        subprocess.run(
-            "openssl dgst -sha256 -binary {} | openssl base64 -A".format(
-                str(static_file_full_path(("css/theme.dark.css")))
-            ),
-            shell=True,
-            check=True,
-            stdout=subprocess.PIPE,
+    def file_hash(file):
+        return base64.b64encode(hashlib.sha384(file.read_bytes()).digest()).decode(
+            "utf8"
         )
-        .stdout.strip()
-        .decode("utf-8")
-    )
 
+    # hash calculated by browser for sub-resource integrity checks:
+    # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
     cache_busters = {
-        "css/application.css": static_file_hash("css/application.css"),
-        "css/theme.dark.css": dark_theme_sha256_integrity,
-        "js/application.js": static_file_hash("js/application.js"),
-        "html/SPRTcalculator.html": static_file_hash("html/SPRTcalculator.html"),
+        f"{i}/{j.name}": file_hash(j)
+        for i in ("css", "js")
+        for j in static_full_path(i).glob(f"*.{i}")
     }
 
     rundb = RunDb()
@@ -71,8 +57,7 @@ def main(global_config, **settings):
     def group_finder(username, request):
         return request.userdb.get_user_groups(username)
 
-    with open(os.path.expanduser("~/fishtest.secret"), "r") as f:
-        secret = f.read()
+    secret = Path("~/fishtest.secret").expanduser().read_text()
     config.set_authentication_policy(
         AuthTktAuthenticationPolicy(
             secret, callback=group_finder, hashalg="sha512", http_only=True
@@ -80,7 +65,6 @@ def main(global_config, **settings):
     )
     config.set_authorization_policy(ACLAuthorizationPolicy())
 
-    config.add_static_view("html", "static/html", cache_max_age=3600)
     config.add_static_view("css", "static/css", cache_max_age=3600)
     config.add_static_view("js", "static/js", cache_max_age=3600)
     config.add_static_view("img", "static/img", cache_max_age=3600)
@@ -97,15 +81,15 @@ def main(global_config, **settings):
     config.add_route("users_monthly", "/users/monthly")
     config.add_route("actions", "/actions")
     config.add_route("nns", "/nns")
+    config.add_route("sprt_calc", "/sprt_calc")
 
     config.add_route("tests", "/tests")
-    config.add_route("tests_machines", "/tests/machines")
     config.add_route("tests_finished", "/tests/finished")
     config.add_route("tests_run", "/tests/run")
     config.add_route("tests_view", "/tests/view/{id}")
-    config.add_route("tests_view_spsa_history", "/tests/view/{id}/spsa_history")
     config.add_route("tests_user", "/tests/user/{username}")
     config.add_route("tests_stats", "/tests/stats/{id}")
+    config.add_route("tests_live_elo", "/tests/live_elo/{id}")
 
     # Tests - actions
     config.add_route("tests_modify", "/tests/modify")

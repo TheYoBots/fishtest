@@ -233,16 +233,21 @@ def github_api(repo):
 def required_net(engine):
     net = None
     print("Obtaining EvalFile of {} ...".format(os.path.basename(engine)))
-    with subprocess.Popen(
-        [engine, "uci"],
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        bufsize=1,
-        close_fds=not IS_WINDOWS,
-    ) as p:
-        for line in iter(p.stdout.readline, ""):
-            if "EvalFile" in line:
-                net = line.split(" ")[6].strip()
+    try:
+        with subprocess.Popen(
+            [engine, "uci"],
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ) as p:
+            for line in iter(p.stdout.readline, ""):
+                if "EvalFile" in line:
+                    net = line.split(" ")[6].strip()
+    except (OSError, subprocess.SubprocessError) as e:
+        raise WorkerException(
+            "Unable to obtain name for required net. Error: {}".format(str(e))
+        )
 
     if p.returncode != 0:
         raise WorkerException(
@@ -1295,16 +1300,14 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         games_concurrency * threads,
     )
 
-    if base_nps < 500000 / (1 + math.tanh((worker_concurrency - 1) / 8)):
+    if base_nps < 540000 / (1 + math.tanh((worker_concurrency - 1) / 8)):
         raise FatalException(
             "This machine is too slow ({} nps / thread) to run fishtest effectively - sorry!".format(
                 base_nps
             )
         )
-
-    factor = (
-        1280000 / base_nps
-    )  # 1280000 nps is the reference core, also used in fishtest views.
+    # 1328000 nps is the reference core, also set in views.py and delta_update_users.py
+    factor = 1328000 / base_nps
 
     # Adjust CPU scaling.
     scaled_tc, tc_limit = adjust_tc(run["args"]["tc"], factor)

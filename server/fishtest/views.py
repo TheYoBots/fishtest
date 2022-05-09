@@ -266,6 +266,11 @@ def nns(request):
     }
 
 
+@view_config(route_name="sprt_calc", renderer="sprt_calc.mak")
+def sprt_calc(request):
+    return {}
+
+
 @view_config(route_name="actions", renderer="actions.mak")
 def actions(request):
     search_action = request.params.get("action", "")
@@ -722,7 +727,7 @@ def validate_form(request):
             raise Exception("Number of games must be >= 0")
 
         data["spsa"] = {
-            "A": int(request.POST["spsa_A"]),
+            "A": int(float(request.POST["spsa_A"]) * data["num_games"] / 2),
             "alpha": float(request.POST["spsa_alpha"]),
             "gamma": float(request.POST["spsa_gamma"]),
             "raw_params": request.POST["spsa_raw_params"],
@@ -811,7 +816,12 @@ def tests_run(request):
 
     run_args = {}
     if "id" in request.params:
-        run_args = request.rundb.get_run(request.params["id"])["args"]
+        run_args = copy.deepcopy(request.rundb.get_run(request.params["id"])["args"])
+        if "spsa" in run_args:
+            # needs deepcopy
+            run_args["spsa"]["A"] = (
+                round(1000 * 2 * run_args["spsa"]["A"] / run_args["num_games"]) / 1000
+            )
 
     username = request.authenticated_userid
     u = request.userdb.get_user(username)
@@ -980,29 +990,32 @@ def tests_delete(request):
     return HTTPFound(location=request.route_url("tests"))
 
 
+def get_page_title(run):
+    if run["args"].get("sprt"):
+        page_title = "SPRT {} vs {}".format(
+            run["args"]["new_tag"], run["args"]["base_tag"]
+        )
+    elif run["args"].get("spsa"):
+        page_title = "SPSA {}".format(run["args"]["new_tag"])
+    else:
+        page_title = "{} games - {} vs {}".format(
+            run["args"]["num_games"], run["args"]["new_tag"], run["args"]["base_tag"]
+        )
+    return page_title
+
+
+@view_config(route_name="tests_live_elo", renderer="tests_live_elo.mak")
+def tests_live_elo(request):
+    run = request.rundb.get_run(request.matchdict["id"])
+    request.rundb.get_results(run)
+    return {"run": run, "page_title": get_page_title(run)}
+
+
 @view_config(route_name="tests_stats", renderer="tests_stats.mak")
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
     request.rundb.get_results(run)
-    return {"run": run}
-
-
-@view_config(route_name="tests_machines", renderer="machines_table.mak")
-def tests_machines(request):
-    machines = request.rundb.get_machines()
-    for machine in machines:
-        diff = diff_date(machine["last_updated"])
-        machine["last_updated"] = delta_date(diff)
-    return {"machines": machines}
-
-
-@view_config(route_name="tests_view_spsa_history", renderer="json")
-def tests_view_spsa_history(request):
-    run = request.rundb.get_run(request.matchdict["id"])
-    if "spsa" not in run["args"]:
-        return {}
-
-    return run["args"]["spsa"]
+    return {"run": run, "page_title": get_page_title(run)}
 
 
 @view_config(route_name="tests_view", renderer="tests_view.mak")
@@ -1072,7 +1085,7 @@ def tests_view(request):
             A = value["A"]
             alpha = value["alpha"]
             gamma = value["gamma"]
-            summary = "Iter: {:d}, A: {:d}, alpha {:0.3f}, gamma {:0.3f}".format(
+            summary = "iter: {:d}, A: {:d}, alpha: {:0.3f}, gamma: {:0.3f}".format(
                 iter_local,
                 A,
                 alpha,
@@ -1081,6 +1094,8 @@ def tests_view(request):
             params = value["params"]
             value = [summary]
             for p in params:
+                c_iter = p["c"] / (iter_local**gamma)
+                r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
                 value.append(
                     [
                         p["name"],
@@ -1088,8 +1103,10 @@ def tests_view(request):
                         int(p["start"]),
                         int(p["min"]),
                         int(p["max"]),
-                        "{:.3f}".format(p["c"] / (iter_local**gamma)),
-                        "{:.3f}".format(p["a"] / (A + iter_local) ** alpha),
+                        "{:.3f}".format(c_iter),
+                        "{:.3f}".format(p["c_end"]),
+                        "{:.2e}".format(r_iter),
+                        "{:.2e}".format(p["r_end"]),
                     ]
                 )
         if "tests_repo" in run["args"]:
@@ -1126,27 +1143,18 @@ def tests_view(request):
         last_updated = task.get("last_updated", datetime.datetime.min)
         task["last_updated"] = last_updated
 
-    if run["args"].get("sprt"):
-        page_title = "SPRT {} vs {}".format(
-            run["args"]["new_tag"], run["args"]["base_tag"]
-        )
-    elif run["args"].get("spsa"):
-        page_title = "SPSA {}".format(run["args"]["new_tag"])
-    else:
-        page_title = "{} games - {} vs {}".format(
-            run["args"]["num_games"], run["args"]["new_tag"], run["args"]["base_tag"]
-        )
     chi2 = get_chi2(run["tasks"])
     update_residuals(run["tasks"], cached_chi2=chi2)
     return {
         "run": run,
         "run_args": run_args,
-        "page_title": page_title,
+        "page_title": get_page_title(run),
         "approver": request.has_permission("approve_run"),
         "chi2": chi2,
         "totals": "({} active worker{} with {} core{})".format(
             active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
         ),
+        "tasks_shown": request.cookies.get("tasks_state") == "Hide",
     }
 
 
@@ -1251,14 +1259,13 @@ def homepage_results(request):
         machine["last_updated"] = delta_date(diff)
         if machine["nps"] != 0:
             games_per_minute += (
-                (machine["nps"] / 1280000.0)
+                (machine["nps"] / 1328000.0)
                 * (60.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
                 * (
                     int(machine["concurrency"])
                     // machine["run"]["args"].get("threads", 1)
                 )
             )
-    machines.reverse()
     # Get updated results for unfinished runs + finished runs
     (runs, pending_hours, cores, nps) = request.rundb.aggregate_unfinished_runs()
     return {
@@ -1308,6 +1315,7 @@ def tests(request):
             finally:
                 last_time = time.time()
                 building.release()
+
     return {
         **last_tests,
         "machines_shown": request.cookies.get("machines_state") == "Hide",

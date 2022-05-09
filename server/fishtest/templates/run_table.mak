@@ -1,6 +1,12 @@
-<%page args="runs, pages=None, show_delete=False, header=None, count=None, toggle=None, alt=None"/>
+<%page args="runs, pages=None, show_delete=False, header=None, count=None, toggle=None, alt=None, title=''"/>
 
 <%namespace name="base" file="base.mak"/>
+
+% if toggle is None:
+    <script>
+      document.title = '${username + " - " if username else ""}Finished Tests${title} - page ${page_idx+1} | Stockfish Testing';
+    </script>
+% endif
 
 <%def name="pagination()">
   % if pages and len(pages) > 3:
@@ -113,7 +119,7 @@
 
               <td style="width: 11%;" class="run-live">
                 % if 'sprt' in run['args']:
-                    <a href="/html/live_elo.html?${str(run['_id'])}" target="_blank">sprt</a>
+                    <a href="/tests/live_elo/${str(run['_id'])}" target="_blank">sprt</a>
                 % else:
                   ${run['args']['num_games']}
                 % endif

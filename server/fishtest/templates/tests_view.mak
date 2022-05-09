@@ -2,23 +2,28 @@
 
 <%
 from fishtest.util import worker_name
+
+if 'spsa' in run['args']:
+  import json
+  spsa_data = json.dumps(run["args"]["spsa"])
 %>
 
 <%namespace name="base" file="base.mak"/>
 
 % if 'spsa' in run['args']:
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript" src="/js/gkr.js"></script>
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
     <script>
-      var spsa_history_url = '${run_args[0][1]}/spsa_history';
+      const spsa_data = ${spsa_data | n};
     </script>
-    <script type="text/javascript" src="/js/spsa.js"></script>
+    <script src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
+            integrity="sha384-${cache_busters['js/spsa.js']}"
+            crossorigin="anonymous"></script>
 % endif
 
-<h3>
+<h2>
   <span>${page_title}</span>
   <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
-</h3>
+</h2>
 
 <div class="elo-results-top">
   <%include file="elo_results.mak" args="run=run" />
@@ -48,12 +53,14 @@ from fishtest.util import worker_name
                       <table>
                         <thead>
                           <th>param</th>
-                          <th>best</th>
+                          <th>value</th>
                           <th>start</th>
                           <th>min</th>
                           <th>max</th>
                           <th>c</th>
-                          <th>a</th>
+                          <th>c_end</th>
+                          <th>r</th>
+                          <th>r_end</th>
                         </thead>
                         <tbody>
                           % for row in arg[1][1:]:
@@ -87,10 +94,12 @@ from fishtest.util import worker_name
               </tr>
           % endif
       % endfor
-      <tr>
-        <td>raw statistics</td>
-        <td><a href=/tests/stats/${run['_id']}>/tests/stats/${run['_id']}</a></td>
-      </tr>
+      % if 'spsa' not in run['args']:
+          <tr>
+            <td>raw statistics</td>
+            <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
+          </tr>
+      % endif
     </table>
   </div>
 
@@ -207,7 +216,6 @@ from fishtest.util import worker_name
       </div>
     </div>
 
-    <div id="div_spsa_error" style="display: none; border: 1px solid red; color: red; width: 400px"></div>
     <div id="chart_toolbar" style="display: none">
       Gaussian Kernel Smoother&nbsp;&nbsp;
       <div class="btn-group">
@@ -219,7 +227,7 @@ from fishtest.util import worker_name
         <button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown">
           View Individual Parameter<span class="caret"></span>
         </button>
-        <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
+	<ul class="dropdown-menu" style="z-index: 1030" role="menu" id="dropdown_individual"></ul>
       </div>
 
       <button id="btn_view_all" class="btn">View All</button>
@@ -228,19 +236,26 @@ from fishtest.util import worker_name
 % endif
 
 <section id="diff-section" style="display: none">
-  <h3>
+  <h4>
+    <button id="diff-toggle" class="btn btn-sm btn-light border">Show</button>
     Diff
     <span id="diff-num-comments" style="display: none"></span>
     <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">View on Github</a>
-    <button id="diff-toggle" class="btn btn-sm btn-light border">Show</button>
     <a href="javascript:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">Copy apply-diff command</a>
     <div class="btn btn-link copied" style="color: green; display: none">Copied command!</div>
-  </h3>
+  </h4>
   <pre id="diff-contents"><code class="diff"></code></pre>
 </section>
 
-<h3>Tasks ${totals}</h3>
-<div id="tasks" class="overflow-auto">
+<h4>
+  <button id="tasks-button" class="btn btn-sm btn-light border">
+    ${'Hide' if tasks_shown else 'Show'}
+  </button>
+  Tasks ${totals}
+</h4>
+<div id="tasks"
+     class="overflow-auto"
+     style="${'' if tasks_shown else 'display: none;'}">
   <table class='table table-striped table-sm'>
     <thead class="sticky-top">
       <tr>
@@ -336,7 +351,35 @@ from fishtest.util import worker_name
   </table>
 </div>
 
-<script type="text/javascript" src="/js/highlight.diff.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"
+        integrity="sha512-yUUc0qWm2rhM7X0EFe82LNnv2moqArj5nro/w1bi05A09hRVeIZbN6jlMoyu0+4I/Bu4Ck/85JQIU82T82M28w=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+
+<script>
+  function set_highlight_theme_dark () {
+    $('head link[href*="/styles/github.min.css"]').remove();
+    $('head').append($('<link rel="stylesheet" crossorigin="anonymous" referrerpolicy="no-referrer" />')
+      .attr("href", "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark.min.css")
+      .attr("integrity", "sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==")
+  )}
+
+  function set_highlight_theme_light () {
+    $('head link[href*="/styles/github-dark.min.css"]').remove();
+    $('head').append($('<link rel="stylesheet" crossorigin="anonymous" referrerpolicy="no-referrer" />')
+      .attr("href", "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github.min.css")
+      .attr("integrity", "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==")
+  )}
+
+  $(document).ready(function () {
+    $.cookie('theme') === 'dark' ? set_highlight_theme_dark() : set_highlight_theme_light();
+  });
+
+  $("#change-color-theme").click(function() {
+    $.cookie('theme') === 'light' ? set_highlight_theme_dark() : set_highlight_theme_light();
+  });
+</script>
+
 <script>
   document.title = '${page_title} | Stockfish Testing';
 
@@ -395,7 +438,7 @@ from fishtest.util import worker_name
           $toggleBtn.text("Show");
         }
         $("#diff-section").show();
-        hljs.highlightBlock($diffText[0]);
+        hljs.highlightElement($diffText[0]);
 
         // Show # of comments for this diff on Github
         $.ajax({
@@ -412,4 +455,3 @@ from fishtest.util import worker_name
     });
   });
 </script>
-<link rel="stylesheet" href="/css/highlight.github.css">

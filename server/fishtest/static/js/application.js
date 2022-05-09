@@ -27,39 +27,40 @@ $(() => {
             .forEach(tr => body.appendChild(tr));
     });
 
-
     $("#non_default-button").click(function() {
-        var active = $(this).text().trim().substring(0, 4) === 'Hide';
+        const active = $(this).text().trim().substring(0, 4) === 'Hide';
         $(this).text(active ? 'Show non default nets' : 'Hide non default nets');
         $.cookie('non_default_state', active ? 'Hide' : 'Show', {expires: 3650});
         window.location.reload();
     });
 
-    let fetchingMachines = false;
     $("#machines-button").click(function() {
         const active = $(this).text().trim() === 'Hide';
         $(this).text(active ? 'Show' : 'Hide');
-        if (!active && !$("#machines table")[0] && !fetchingMachines) {
-            fetchingMachines = true;
-            $.get("/tests/machines", (html) => $("#machines").append(html));
-        }
         $("#machines").slideToggle(150);
         $.cookie('machines_state', $(this).text().trim(), {expires: 3650});
     });
 
+    $("#tasks-button").click(function() {
+        const active = $(this).text().trim() === 'Hide';
+        $(this).text(active ? 'Show' : 'Hide');
+        $("#tasks").slideToggle(150);
+        $.cookie('tasks_state', $(this).text().trim(), {expires: 3650});
+    });
+
     // Click the sun/moon icons to change the color theme of the site
-    // SRI hash for "fishtest/server/fishtest/static/css/theme.dark.css":
-    // openssl dgst -sha256 -binary theme.dark.css | openssl base64 -A
+    // hash calculated by browser for sub-resource integrity checks:
+    // https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
     let theme = $.cookie('theme') || 'light';
     $("#change-color-theme").click(function() {
       if (theme === 'light') {
-        const darkThemeSha256 = $("meta[name='dark-theme-sha256']").attr("content");
         $("#sun").show();
         $("#moon").hide();
         $("<link>")
-          .attr("href", "/css/theme.dark.css?v=" + darkThemeSha256)
           .attr("rel", "stylesheet")
-          .attr("integrity", "sha256-" + darkThemeSha256)
+          .attr("href", "/css/theme.dark.css?v=" + darkThemeHash)
+          .attr("integrity", "sha384-" + darkThemeHash)
+          .attr("crossorigin", "anonymous")
           .appendTo($("head"));
         theme = 'dark';
       } else {

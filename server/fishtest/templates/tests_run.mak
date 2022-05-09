@@ -94,6 +94,10 @@ else:
   }
 </style>
 
+<script>
+  document.title = 'Create New Test | Stockfish Testing';
+</script>
+
 <header style="text-align: center; padding-top: 7px">
   <h2>Create New Test</h2>
   <section class="instructions" style="margin-bottom: 35px">
@@ -242,10 +246,10 @@ else:
 
     <div class="flex-row input-group input-group-sm stop_rule spsa"
          style="${args.get('spsa') or 'display: none'}">
-      <label class="field-label leftmost">SPSA A</label>
-      <input type="number" min="0" step="500" name="spsa_A"
+      <label class="field-label leftmost">SPSA A ratio</label>
+      <input type="number" min="0" max="1" step="0.001" name="spsa_A"
              class="third-size no-arrows form-control"
-             value="${args.get('spsa', {'A': '3000'})['A']}" />
+             value="${args.get('spsa', {'A': '0.1'})['A']}" />
 
       <label class="field-label rightmost">SPSA Alpha</label>
       <input type="number" min="0" step="0.001" name="spsa_alpha"
@@ -295,7 +299,7 @@ else:
         <a href=https://github.com/vdbergh/spsa_simul target=_blank>
         https://github.com/vdbergh/spsa_simul</a>.
         Currently this option
-        should be used with the book 'noob_3moves.epd' and contempt should be left at its default value 24
+        should be used with the book 'UHO_XXL_+0.90_+1.19.epd'
         and in addition the option should not be used with nodestime or with more than one thread.
         </i>
       </div>
@@ -383,7 +387,7 @@ else:
   % endif
 </form>
 
-<script type="text/javascript">
+<script>
   $(window).bind('pageshow', function() {
     // If pressing the 'back' button to get back to this page, make sure
     // the submit test button is enabled again.
@@ -556,8 +560,10 @@ else:
   });
 </script>
 
-<script type="text/javascript" src="/js/spsa_new.js?5"></script>
-<script type="text/javascript">
+<script src="/js/spsa_new.js?5&?v=${cache_busters['js/spsa_new.js']}"
+        integrity="sha384-${cache_busters['js/spsa_new.js']}"
+        crossorigin="anonymous"></script>
+<script>
   function do_spsa_work() {
     /* parsing/computing */
     if (!$('#enable').prop("checked")) {

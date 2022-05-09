@@ -1,42 +1,59 @@
 <%
-  monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
+monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
 %>
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <title>Stockfish Testing Framework</title>
     <meta name="csrf-token" content="${request.session.get_csrf_token()}" />
-    <meta name="dark-theme-sha256" content="${cache_busters['css/theme.dark.css']}" />
+
+    <script>
+      darkThemeHash = "${cache_busters['css/theme.dark.css']}";
+    </script>
 
     <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-          integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"
+          integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g=="
           crossorigin="anonymous"
           referrerpolicy="no-referrer" />
 
     <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
-          integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU"
-          crossorigin="anonymous">
+          href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css"
+          integrity="sha512-GQGU0fMMi238uA+a/bdWJfpUGKUkBdgfFdgBm72SUQ6BeyWjoY/ton0tEjH+OSH9iP4Dfh+7HM0I9f5eR0L/4w=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer" />
 
-    <link href="/css/application.css?v=${cache_busters['css/application.css']}" rel="stylesheet">
+    <link rel="stylesheet"
+          href="/css/application.css?v=${cache_busters['css/application.css']}"
+          integrity="sha384-${cache_busters['css/application.css']}"
+          crossorigin="anonymous" />
+
     % if request.cookies.get('theme') == 'dark':
-        <link href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}" rel="stylesheet">
+        <link rel="stylesheet"
+              href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}"
+              integrity="sha384-${cache_busters['css/theme.dark.css']}"
+              crossorigin="anonymous" />
     % endif
 
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"
-            integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="
-            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+            integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"
-            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"
+            integrity="sha512-pax4MlgXjHEPfCwcJLQhigY7+N8rt6bVvWLFyUMuxShv170X53TRzGPmPkZmGBhk+jikR8WBM4yl7A9WMHHqvg=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
 
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"
-            integrity="sha256-1A78rJEdiWTzco6qdn3igTBv9VupN3Q1ozZNTR4WE/Y="
-            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"
+            integrity="sha512-3j3VU6WC5rPQB4Ld1jnLV7Kd5xr+cq9avvhwqzbH/taCRNURoeEpoPBK9pDyeukwSxwRPJ8fDgvYXd6SkaZ2TA=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
 
-    <script src="/js/application.js?v=${cache_busters['js/application.js']}" defer></script>
+    <script src="/js/application.js?v=${cache_busters['js/application.js']}"
+            integrity="sha384-${cache_busters['js/application.js']}"
+            crossorigin="anonymous"
+	    defer></script>
 
     <%block name="head"/>
   </head>
@@ -97,7 +114,7 @@
         <li><a href="https://discord.gg/awnh2qZfTT" target="_blank" rel="noopener">Discord</a></li>
         <li><a href="https://groups.google.com/g/fishcooking" target="_blank" rel="noopener">Forum</a></li>
         <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener">Wiki</a></li>
-        <li><a href="/html/SPRTcalculator.html?elo-model=Normalized&elo-0=0.0&elo-1=2.5&draw-ratio=0.49&rms-bias=191&v=${cache_busters['html/SPRTcalculator.html']}" target="_blank">SPRT Calc</a></li>
+        <li><a href="/sprt_calc?elo-model=Normalized&elo-0=0.0&elo-1=2.5&draw-ratio=0.49&rms-bias=191">SPRT Calc</a></li>
         <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener">Eval Guide</a></li>
 
         <li class="nav-header my-1 pt-1 ps-2">Development</li>
